@@ -18,14 +18,17 @@ use std::io::BufReader;
 struct PathDrawer<'a> {
     xfact: f32,
     yfact: f32,
+    xofs: f32,
+    yofs: f32,
     canvas: &'a mut CanvasRenderingContext2D,
     path: Path2D,
 }
 
 impl<'a> GeomReader for PathDrawer<'a> {
     fn pointxy(&mut self, x: f64, y: f64, idx: usize) {
-        let x = 180.0 + x as f32;
-        let y = 90.0 - y as f32;
+        // x,y are in degrees, y must be inverted
+        let x = self.xofs + x as f32;
+        let y = self.yofs - y as f32;
         if idx == 0 {
             self.path.move_to(vec2f(x * self.xfact, y * self.yfact));
         } else {
@@ -55,7 +58,7 @@ fn main() -> std::result::Result<(), std::io::Error> {
     let window_size = vec2i(2048, 1024);
     let window = video
         .window(
-            "Minimal example",
+            "FlatGeobuf Demo",
             window_size.x() as u32,
             window_size.y() as u32,
         )
@@ -84,19 +87,26 @@ fn main() -> std::result::Result<(), std::io::Error> {
     canvas.set_line_width(1.0);
 
     let mut file = BufReader::new(File::open(
-        "/home/pi/code/gis/flatgeobuf/test/data/countries.fgb",
+        "/home/pi/code/gis/flatgeobuf/test/data/osm/osm-buildings-ch.fgb",
     )?);
     let hreader = HeaderReader::read(&mut file)?;
     let header = hreader.header();
 
+    let bbox = (8.522086, 47.363333, 8.553521, 47.376020);
+    let w = (bbox.2 - bbox.0) as f32;
+    let h = (bbox.3 - bbox.1) as f32;
+
     // let mut drawer = DebugReader {};
     let mut drawer = PathDrawer {
-        xfact: window_size.x() as f32 / 360.0,
-        yfact: window_size.y() as f32 / 180.0,
+        xfact: window_size.x() as f32 / w, // stretch to full width/height
+        yfact: window_size.y() as f32 / h,
+        xofs: -bbox.0 as f32,
+        yofs: bbox.3 as f32,
         canvas: &mut canvas,
         path: Path2D::new(),
     };
-    let mut freader = FeatureReader::select_all(&mut file, &header)?;
+    let mut freader =
+        FeatureReader::select_bbox(&mut file, &header, bbox.0, bbox.1, bbox.2, bbox.3)?;
     while let Ok(feature) = freader.next(&mut file) {
         let geometry = feature.geometry().unwrap();
         geometry.parse(&mut drawer, header.geometry_type());
