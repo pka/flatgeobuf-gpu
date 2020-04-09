@@ -1,16 +1,6 @@
-// pathfinder/examples/canvas_minimal/src/main.rs
-//
-// Copyright © 2019 The Pathfinder Project Developers.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use pathfinder_canvas::{Canvas, CanvasFontContext, Path2D};
+use flatgeobuf::*;
+use pathfinder_canvas::{Canvas, CanvasFontContext, CanvasRenderingContext2D, Path2D};
 use pathfinder_color::ColorF;
-use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::{vec2f, vec2i};
 use pathfinder_gl::{GLDevice, GLVersion};
 use pathfinder_renderer::concurrent::rayon::RayonExecutor;
@@ -22,8 +12,36 @@ use pathfinder_resources::embedded::EmbeddedResourceLoader;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::video::GLProfile;
+use std::fs::File;
+use std::io::BufReader;
 
-fn main() {
+struct PathDrawer<'a> {
+    xfact: f32,
+    yfact: f32,
+    canvas: &'a mut CanvasRenderingContext2D,
+    path: Path2D,
+}
+
+impl<'a> GeomReader for PathDrawer<'a> {
+    fn pointxy(&mut self, x: f64, y: f64, idx: usize) {
+        let x = 180.0 + x as f32;
+        let y = 90.0 - y as f32;
+        if idx == 0 {
+            self.path.move_to(vec2f(x * self.xfact, y * self.yfact));
+        } else {
+            self.path.line_to(vec2f(x * self.xfact, y * self.yfact));
+        }
+    }
+    fn ring_begin(&mut self, _size: usize, _idx: usize) {
+        self.path = Path2D::new();
+    }
+    fn ring_end(&mut self, _idx: usize) {
+        self.path.close_path();
+        self.canvas.stroke_path(self.path.clone()); // Do we really need Copy/Clone?
+    }
+}
+
+fn main() -> std::result::Result<(), std::io::Error> {
     // Set up SDL2.
     let sdl_context = sdl2::init().unwrap();
     let video = sdl_context.video().unwrap();
@@ -34,7 +52,7 @@ fn main() {
     gl_attributes.set_context_version(3, 3);
 
     // Open a window.
-    let window_size = vec2i(640, 480);
+    let window_size = vec2i(2048, 1024);
     let window = video
         .window(
             "Minimal example",
@@ -63,23 +81,26 @@ fn main() {
     // Make a canvas. We're going to draw a house.
     let font_context = CanvasFontContext::from_system_source();
     let mut canvas = Canvas::new(window_size.to_f32()).get_context_2d(font_context);
+    canvas.set_line_width(1.0);
 
-    // Set line width.
-    canvas.set_line_width(10.0);
+    let mut file = BufReader::new(File::open(
+        "/home/pi/code/gis/flatgeobuf/test/data/countries.fgb",
+    )?);
+    let hreader = HeaderReader::read(&mut file)?;
+    let header = hreader.header();
 
-    // Draw walls.
-    canvas.stroke_rect(RectF::new(vec2f(75.0, 140.0), vec2f(150.0, 110.0)));
-
-    // Draw door.
-    canvas.fill_rect(RectF::new(vec2f(130.0, 190.0), vec2f(40.0, 60.0)));
-
-    // Draw roof.
-    let mut path = Path2D::new();
-    path.move_to(vec2f(50.0, 140.0));
-    path.line_to(vec2f(150.0, 60.0));
-    path.line_to(vec2f(250.0, 140.0));
-    path.close_path();
-    canvas.stroke_path(path);
+    // let mut drawer = DebugReader {};
+    let mut drawer = PathDrawer {
+        xfact: window_size.x() as f32 / 360.0,
+        yfact: window_size.y() as f32 / 180.0,
+        canvas: &mut canvas,
+        path: Path2D::new(),
+    };
+    let mut freader = FeatureReader::select_all(&mut file, &header)?;
+    while let Ok(feature) = freader.next(&mut file) {
+        let geometry = feature.geometry().unwrap();
+        geometry.parse(&mut drawer, header.geometry_type());
+    }
 
     // Render the canvas to screen.
     let scene = SceneProxy::from_scene(canvas.into_canvas().into_scene(), RayonExecutor);
@@ -94,7 +115,7 @@ fn main() {
             | Event::KeyDown {
                 keycode: Some(Keycode::Escape),
                 ..
-            } => return,
+            } => return Ok(()),
             _ => {}
         }
     }

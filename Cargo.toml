@@ -16,3 +16,4 @@ pathfinder_gl = { git = "https://github.com/servo/pathfinder/" }
 pathfinder_gpu = { git = "https://github.com/servo/pathfinder/" }
 pathfinder_renderer = { git = "https://github.com/servo/pathfinder/" }
 pathfinder_resources = { git = "https://github.com/servo/pathfinder/" }
+flatgeobuf = "0.3.1"
