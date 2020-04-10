@@ -1,4 +1,5 @@
 use flatgeobuf::*;
+use geozero_api::GeomProcessor;
 use pathfinder_canvas::{Canvas, CanvasFontContext, CanvasRenderingContext2D, Path2D};
 use pathfinder_color::{rgbu, ColorF};
 use pathfinder_content::fill::FillRule;
@@ -28,7 +29,7 @@ struct PathDrawer<'a> {
     path: Path2D,
 }
 
-impl<'a> GeomReader for PathDrawer<'a> {
+impl<'a> GeomProcessor for PathDrawer<'a> {
     fn pointxy(&mut self, x: f64, y: f64, idx: usize) {
         // x,y are in degrees, y must be inverted
         let x = (x as f32 - self.xmin) * self.xfact;
@@ -128,7 +129,7 @@ fn main() -> std::result::Result<(), std::io::Error> {
     let start = Instant::now();
     while let Ok(feature) = freader.next(&mut file) {
         let geometry = feature.geometry().unwrap();
-        geometry.parse(&mut drawer, header.geometry_type());
+        geometry.process(&mut drawer, header.geometry_type());
     }
     stats.fbg_data_read_time = start.elapsed();
 

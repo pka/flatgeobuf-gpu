@@ -22,6 +22,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
 
 [[package]]
+name = "async-trait"
+version = "0.1.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da71fef07bc806586090247e971229289f64c210a278ee5ae419314eb386b31d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -210,12 +221,12 @@ dependencies = [
 [[package]]
 name = "flatgeobuf"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4e872bc65822483c9d722b3a3bc3fc3704fcea07b3c38bb0e6db07a3d253655"
 dependencies = [
+ "async-trait",
  "byteorder",
  "bytes",
  "flatbuffers",
+ "geozero-api",
  "reqwest",
 ]
 
@@ -224,6 +235,7 @@ name = "flatgeobuf-gpu"
 version = "0.1.0"
 dependencies = [
  "flatgeobuf",
+ "geozero-api",
  "gl",
  "pathfinder_canvas",
  "pathfinder_color",
@@ -311,6 +323,13 @@ dependencies = [
  "futures-core",
  "futures-task",
  "pin-utils",
+]
+
+[[package]]
+name = "geozero-api"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
 ]
 
 [[package]]
