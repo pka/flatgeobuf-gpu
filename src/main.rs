@@ -15,6 +15,9 @@ use sdl2::keyboard::Keycode;
 use sdl2::video::GLProfile;
 use std::fs::File;
 use std::io::BufReader;
+use std::time::Instant;
+
+mod ui;
 
 struct PathDrawer<'a> {
     xfact: f32,
@@ -45,6 +48,9 @@ impl<'a> GeomReader for PathDrawer<'a> {
     }
 }
 
+const DEFAULT_WINDOW_WIDTH: i32 = 1067;
+const DEFAULT_WINDOW_HEIGHT: i32 = 800;
+
 fn main() -> std::result::Result<(), std::io::Error> {
     // Set up SDL2.
     let sdl_context = sdl2::init().unwrap();
@@ -56,7 +62,7 @@ fn main() -> std::result::Result<(), std::io::Error> {
     gl_attributes.set_context_version(3, 3);
 
     // Open a window.
-    let window_size = vec2i(2048, 1024);
+    let window_size = vec2i(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
     let window = video
         .window(
             "FlatGeobuf Demo",
@@ -73,14 +79,17 @@ fn main() -> std::result::Result<(), std::io::Error> {
     window.gl_make_current(&gl_context).unwrap();
 
     // Create a Pathfinder renderer.
+    let resources = EmbeddedResourceLoader::new();
     let mut renderer = Renderer::new(
         GLDevice::new(GLVersion::GL3, 0),
-        &EmbeddedResourceLoader::new(),
+        &resources,
         DestFramebuffer::full_window(window_size),
         RendererOptions {
             background_color: Some(ColorF::white()),
         },
     );
+
+    let stats_ui_presenter = ui::StatsUIPresenter::new(&renderer.device, &resources, window_size);
 
     // Make a canvas. We're going to draw a house.
     let font_context = CanvasFontContext::from_system_source();
@@ -89,6 +98,8 @@ fn main() -> std::result::Result<(), std::io::Error> {
     canvas.set_line_width(1.0);
     canvas.set_fill_style(rgbu(132, 132, 132));
 
+    let mut stats = ui::Stats::default();
+    let start = Instant::now();
     let mut file = BufReader::new(File::open(
         "/home/pi/code/gis/flatgeobuf/test/data/osm/osm-buildings-ch.fgb",
         // "/home/pi/code/gis/flatgeobuf/test/data/countries.fgb",
@@ -112,14 +123,23 @@ fn main() -> std::result::Result<(), std::io::Error> {
     };
     let mut freader =
         FeatureReader::select_bbox(&mut file, &header, bbox.0, bbox.1, bbox.2, bbox.3)?;
+    stats.fbg_index_read_time = start.elapsed();
+    stats.feature_count = freader.filter_count().unwrap();
+    let start = Instant::now();
     while let Ok(feature) = freader.next(&mut file) {
         let geometry = feature.geometry().unwrap();
         geometry.parse(&mut drawer, header.geometry_type());
     }
+    stats.fbg_data_read_time = start.elapsed();
 
     // Render the canvas to screen.
+    let start = Instant::now();
     let scene = SceneProxy::from_scene(canvas.into_canvas().into_scene(), RayonExecutor);
     scene.build_and_render(&mut renderer, BuildOptions::default());
+    stats.render_time = start.elapsed();
+
+    stats_ui_presenter.draw_stats_window(&renderer.device, &stats);
+
     window.gl_swap_window();
 
     // Wait for a keypress.

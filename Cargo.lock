@@ -199,24 +199,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fgb_pathfinder"
-version = "0.1.0"
-dependencies = [
- "flatgeobuf",
- "gl",
- "pathfinder_canvas",
- "pathfinder_color",
- "pathfinder_content",
- "pathfinder_geometry",
- "pathfinder_gl",
- "pathfinder_gpu",
- "pathfinder_renderer",
- "pathfinder_resources",
- "sdl2",
- "sdl2-sys",
-]
-
-[[package]]
 name = "flatbuffers"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -235,6 +217,25 @@ dependencies = [
  "bytes",
  "flatbuffers",
  "reqwest",
+]
+
+[[package]]
+name = "flatgeobuf-gpu"
+version = "0.1.0"
+dependencies = [
+ "flatgeobuf",
+ "gl",
+ "pathfinder_canvas",
+ "pathfinder_color",
+ "pathfinder_content",
+ "pathfinder_geometry",
+ "pathfinder_gl",
+ "pathfinder_gpu",
+ "pathfinder_renderer",
+ "pathfinder_resources",
+ "pathfinder_ui",
+ "sdl2",
+ "sdl2-sys",
 ]
 
 [[package]]
