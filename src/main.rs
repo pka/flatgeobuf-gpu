@@ -3,7 +3,7 @@ use geozero_api::GeomProcessor;
 use pathfinder_canvas::{Canvas, CanvasFontContext, CanvasRenderingContext2D, Path2D};
 use pathfinder_color::{rgbu, ColorF};
 use pathfinder_content::fill::FillRule;
-use pathfinder_geometry::vector::{vec2f, vec2i};
+use pathfinder_geometry::vector::{vec2f, vec2i, Vector2F, Vector2I};
 use pathfinder_gl::{GLDevice, GLVersion};
 use pathfinder_renderer::concurrent::rayon::RayonExecutor;
 use pathfinder_renderer::concurrent::scene_proxy::SceneProxy;
@@ -19,35 +19,6 @@ use std::io::BufReader;
 use std::time::Instant;
 
 mod ui;
-
-struct PathDrawer<'a> {
-    xfact: f32,
-    yfact: f32,
-    xmin: f32,
-    ymax: f32,
-    canvas: &'a mut CanvasRenderingContext2D,
-    path: Path2D,
-}
-
-impl<'a> GeomProcessor for PathDrawer<'a> {
-    fn pointxy(&mut self, x: f64, y: f64, idx: usize) {
-        // x,y are in degrees, y must be inverted
-        let x = (x as f32 - self.xmin) * self.xfact;
-        let y = (self.ymax - y as f32) * self.yfact;
-        if idx == 0 {
-            self.path.move_to(vec2f(x, y));
-        } else {
-            self.path.line_to(vec2f(x, y));
-        }
-    }
-    fn ring_begin(&mut self, _size: usize, _idx: usize) {
-        self.path = Path2D::new();
-    }
-    fn ring_end(&mut self, _idx: usize) {
-        self.path.close_path();
-        self.canvas.fill_path(self.path.clone(), FillRule::Winding);
-    }
-}
 
 const DEFAULT_WINDOW_WIDTH: i32 = 1067;
 const DEFAULT_WINDOW_HEIGHT: i32 = 800;
@@ -80,79 +51,187 @@ fn main() -> std::result::Result<(), std::io::Error> {
     window.gl_make_current(&gl_context).unwrap();
 
     // Create a Pathfinder renderer.
-    let resources = EmbeddedResourceLoader::new();
-    let mut renderer = Renderer::new(
+    let renderer = Renderer::new(
         GLDevice::new(GLVersion::GL3, 0),
-        &resources,
+        &EmbeddedResourceLoader::new(),
         DestFramebuffer::full_window(window_size),
         RendererOptions {
             background_color: Some(ColorF::white()),
         },
     );
 
-    let stats_ui_presenter = ui::StatsUIPresenter::new(&renderer.device, &resources, window_size);
-
-    // Make a canvas. We're going to draw a house.
-    let font_context = CanvasFontContext::from_system_source();
-    let mut canvas = Canvas::new(window_size.to_f32()).get_context_2d(font_context);
-
-    canvas.set_line_width(1.0);
-    canvas.set_fill_style(rgbu(132, 132, 132));
-
-    let mut stats = ui::Stats::default();
-    let start = Instant::now();
-    let mut file = BufReader::new(File::open(
-        "/home/pi/code/gis/flatgeobuf/test/data/osm/osm-buildings-ch.fgb",
-        // "/home/pi/code/gis/flatgeobuf/test/data/countries.fgb",
-    )?);
-    let hreader = HeaderReader::read(&mut file)?;
-    let header = hreader.header();
-
-    let bbox = (8.522086, 47.363333, 8.553521, 47.376020);
-    // let bbox = (-180.0, -90.0, 180.0, 90.0);
-    let w = (bbox.2 - bbox.0) as f32;
-    let h = (bbox.3 - bbox.1) as f32;
-
-    // let mut drawer = DebugReader {};
-    let mut drawer = PathDrawer {
-        xfact: window_size.x() as f32 / w, // stretch to full width/height
-        yfact: window_size.y() as f32 / h,
-        xmin: bbox.0 as f32,
-        ymax: bbox.3 as f32,
-        canvas: &mut canvas,
-        path: Path2D::new(),
-    };
-    let mut freader =
-        FeatureReader::select_bbox(&mut file, &header, bbox.0, bbox.1, bbox.2, bbox.3)?;
-    stats.fbg_index_read_time = start.elapsed();
-    stats.feature_count = freader.filter_count().unwrap();
-    let start = Instant::now();
-    while let Ok(feature) = freader.next(&mut file) {
-        let geometry = feature.geometry().unwrap();
-        geometry.process(&mut drawer, header.geometry_type());
-    }
-    stats.fbg_data_read_time = start.elapsed();
-
-    // Render the canvas to screen.
-    let start = Instant::now();
-    let scene = SceneProxy::from_scene(canvas.into_canvas().into_scene(), RayonExecutor);
-    scene.build_and_render(&mut renderer, BuildOptions::default());
-    stats.render_time = start.elapsed();
-
-    stats_ui_presenter.draw_stats_window(&renderer.device, &stats);
-
+    let mut fgb_renderer = FgbRenderer::new(renderer, window_size, vec2f(8.53, 47.37));
+    fgb_renderer.render()?;
     window.gl_swap_window();
 
-    // Wait for a keypress.
+    // Enter main render loop.
     let mut event_pump = sdl_context.event_pump().unwrap();
     loop {
-        match event_pump.wait_event() {
+        let ev = event_pump.wait_event();
+        match fgb_renderer.handle_event(ev) {
+            AppEvent::Idle => {}
+            AppEvent::Redraw => {
+                fgb_renderer.render()?;
+                window.gl_swap_window();
+            }
+            AppEvent::Quit => return Ok(()),
+        }
+    }
+}
+
+struct FgbRenderer {
+    renderer: Renderer<GLDevice>,
+    scene: SceneProxy,
+    window_size: Vector2I,
+    center: Vector2F,
+    /// Size of center pixel in map coordinates
+    pixel_size: Vector2F,
+}
+
+enum AppEvent {
+    Idle,
+    Redraw,
+    Quit,
+}
+
+struct PathDrawer<'a> {
+    xmin: f32,
+    ymax: f32,
+    pixel_size: Vector2F,
+    canvas: &'a mut CanvasRenderingContext2D,
+    path: Path2D,
+}
+
+impl<'a> GeomProcessor for PathDrawer<'a> {
+    fn pointxy(&mut self, x: f64, y: f64, idx: usize) {
+        // x,y are in degrees, y must be inverted
+        let x = (x as f32 - self.xmin) / self.pixel_size.x();
+        let y = (self.ymax - y as f32) / self.pixel_size.y();
+        if idx == 0 {
+            self.path.move_to(vec2f(x, y));
+        } else {
+            self.path.line_to(vec2f(x, y));
+        }
+    }
+    fn ring_begin(&mut self, _size: usize, _idx: usize) {
+        self.path = Path2D::new();
+    }
+    fn ring_end(&mut self, _idx: usize) {
+        self.path.close_path();
+        self.canvas.fill_path(self.path.clone(), FillRule::Winding);
+    }
+}
+
+impl FgbRenderer {
+    fn new(renderer: Renderer<GLDevice>, window_size: Vector2I, center: Vector2F) -> FgbRenderer {
+        let pixel_size = vec2f(0.00003, 0.00003); // TODO: calculate from scale and center
+        FgbRenderer {
+            renderer,
+            scene: SceneProxy::new(RayonExecutor),
+            window_size,
+            center,
+            pixel_size,
+        }
+    }
+
+    fn render(&mut self) -> std::result::Result<(), std::io::Error> {
+        let font_context = CanvasFontContext::from_system_source();
+        let stats_ui_presenter = ui::StatsUIPresenter::new(
+            &self.renderer.device,
+            &EmbeddedResourceLoader::new(),
+            self.window_size,
+        );
+
+        let mut canvas = Canvas::new(self.window_size.to_f32()).get_context_2d(font_context);
+
+        canvas.set_line_width(1.0);
+        canvas.set_fill_style(rgbu(132, 132, 132));
+
+        let mut stats = ui::Stats::default();
+        let start = Instant::now();
+        let mut file = BufReader::new(File::open(
+            "/home/pi/code/gis/flatgeobuf/test/data/osm/osm-buildings-ch.fgb",
+            // "/home/pi/code/gis/flatgeobuf/test/data/countries.fgb",
+        )?);
+        let hreader = HeaderReader::read(&mut file)?;
+        let header = hreader.header();
+
+        let wsize = vec2f(self.window_size.x() as f32, self.window_size.y() as f32);
+        // let bbox = (-180.0, -90.0, 180.0, 90.0);
+        let bbox = (
+            self.center.x() - wsize.x() / 2.0 * self.pixel_size.x(),
+            self.center.y() - wsize.y() / 2.0 * self.pixel_size.y(),
+            self.center.x() + wsize.x() / 2.0 * self.pixel_size.x(),
+            self.center.y() + wsize.y() / 2.0 * self.pixel_size.y(),
+        );
+
+        let mut drawer = PathDrawer {
+            xmin: bbox.0,
+            ymax: bbox.3,
+            pixel_size: self.pixel_size,
+            canvas: &mut canvas,
+            path: Path2D::new(),
+        };
+        let mut freader = FeatureReader::select_bbox(
+            &mut file,
+            &header,
+            bbox.0 as f64,
+            bbox.1 as f64,
+            bbox.2 as f64,
+            bbox.3 as f64,
+        )?;
+        stats.fbg_index_read_time = start.elapsed();
+        stats.feature_count = freader.filter_count().unwrap();
+        let start = Instant::now();
+        while let Ok(feature) = freader.next(&mut file) {
+            let geometry = feature.geometry().unwrap();
+            geometry.process(&mut drawer, header.geometry_type());
+        }
+        stats.fbg_data_read_time = start.elapsed();
+
+        // Render the canvas to screen.
+        let start = Instant::now();
+        self.scene.replace_scene(canvas.into_canvas().into_scene());
+        self.scene
+            .build_and_render(&mut self.renderer, BuildOptions::default());
+        stats.render_time = start.elapsed();
+
+        stats_ui_presenter.draw_stats_window(&self.renderer.device, &stats);
+
+        Ok(())
+    }
+
+    fn handle_event(&mut self, event: Event) -> AppEvent {
+        match event {
             Event::Quit { .. }
             | Event::KeyDown {
                 keycode: Some(Keycode::Escape),
                 ..
-            } => return Ok(()),
+            } => {
+                return AppEvent::Quit;
+            }
+            Event::MouseMotion {
+                xrel,
+                yrel,
+                mousestate,
+                ..
+            } => {
+                if mousestate.left() {
+                    self.move_center(xrel, yrel);
+                }
+            }
+            Event::MouseButtonUp { x: _, y: _, .. } => {
+                return AppEvent::Redraw;
+            }
             _ => {}
         }
+        AppEvent::Idle
+    }
+
+    fn move_center(&mut self, xrel: i32, yrel: i32) {
+        self.center += vec2f(
+            xrel as f32 * -self.pixel_size.x(),
+            yrel as f32 * self.pixel_size.y(),
+        );
     }
 }

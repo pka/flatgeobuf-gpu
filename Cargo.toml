@@ -19,7 +19,3 @@ pathfinder_gpu = { git = "https://github.com/servo/pathfinder/" }
 pathfinder_renderer = { git = "https://github.com/servo/pathfinder/" }
 pathfinder_resources = { git = "https://github.com/servo/pathfinder/" }
 pathfinder_ui = { git = "https://github.com/servo/pathfinder/" }
-
-#[profile.release]
-# Index reading is significantly slower with opt-level > 1
-#opt-level = 1
