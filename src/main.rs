@@ -24,6 +24,10 @@ const DEFAULT_WINDOW_WIDTH: i32 = 1067;
 const DEFAULT_WINDOW_HEIGHT: i32 = 800;
 
 fn main() -> std::result::Result<(), std::io::Error> {
+    let fname = std::env::args()
+        .nth(1)
+        .expect("FlatGeobuf file name expceted");
+
     // Set up SDL2.
     let sdl_context = sdl2::init().unwrap();
     let video = sdl_context.video().unwrap();
@@ -60,7 +64,7 @@ fn main() -> std::result::Result<(), std::io::Error> {
         },
     );
 
-    let mut fgb_renderer = FgbRenderer::new(renderer, window_size, vec2f(8.53, 47.37));
+    let mut fgb_renderer = FgbRenderer::new(renderer, window_size, fname, vec2f(8.53, 47.37));
     fgb_renderer.render()?;
     window.gl_swap_window();
 
@@ -80,6 +84,7 @@ fn main() -> std::result::Result<(), std::io::Error> {
 }
 
 struct FgbRenderer {
+    fname: String,
     renderer: Renderer<GLDevice>,
     scene: SceneProxy,
     window_size: Vector2I,
@@ -123,9 +128,15 @@ impl<'a> GeomProcessor for PathDrawer<'a> {
 }
 
 impl FgbRenderer {
-    fn new(renderer: Renderer<GLDevice>, window_size: Vector2I, center: Vector2F) -> FgbRenderer {
+    fn new(
+        renderer: Renderer<GLDevice>,
+        window_size: Vector2I,
+        fname: String,
+        center: Vector2F,
+    ) -> FgbRenderer {
         let pixel_size = vec2f(0.00003, 0.00003); // TODO: calculate from scale and center
         FgbRenderer {
+            fname,
             renderer,
             scene: SceneProxy::new(RayonExecutor),
             window_size,
@@ -149,10 +160,7 @@ impl FgbRenderer {
 
         let mut stats = ui::Stats::default();
         let start = Instant::now();
-        let mut file = BufReader::new(File::open(
-            "/home/pi/code/gis/flatgeobuf/test/data/osm/osm-buildings-ch.fgb",
-            // "/home/pi/code/gis/flatgeobuf/test/data/countries.fgb",
-        )?);
+        let mut file = BufReader::new(File::open(self.fname.clone())?);
         let hreader = HeaderReader::read(&mut file)?;
         let header = hreader.header();
 
