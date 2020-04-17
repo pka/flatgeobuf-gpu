@@ -776,8 +776,9 @@ dependencies = [
 
 [[package]]
 name = "pathfinder_canvas"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a566adea42766710762f021604453cc838444bc51780671ec3ec91ec4a4ff1c9"
 dependencies = [
  "pathfinder_color",
  "pathfinder_content",
@@ -787,16 +788,18 @@ dependencies = [
 
 [[package]]
 name = "pathfinder_color"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69bdc0d277d559e35e1b374de56df9262a6b71e091ca04a8831a239f8c7f0c62"
 dependencies = [
  "pathfinder_simd",
 ]
 
 [[package]]
 name = "pathfinder_content"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6449e0cfa07ca782719467da7cf928625ea43375c9cd0f3104817ecd8825ca69"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -810,8 +813,9 @@ dependencies = [
 
 [[package]]
 name = "pathfinder_geometry"
-version = "0.5.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b7b7e7b4ea703700ce73ebf128e1450eb69c3a8329199ffbfb9b2a0418e5ad3"
 dependencies = [
  "log",
  "pathfinder_simd",
@@ -819,8 +823,9 @@ dependencies = [
 
 [[package]]
 name = "pathfinder_gl"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db360f1d54a86abff4f11f231fa3493db954255744628b6b94acbedf4b07e684"
 dependencies = [
  "gl",
  "half",
@@ -833,8 +838,9 @@ dependencies = [
 
 [[package]]
 name = "pathfinder_gpu"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec01b201ed57fedd353d31e784a034a67edc1d73bb75026c92fcf3156eb2319b"
 dependencies = [
  "bitflags",
  "half",
@@ -847,8 +853,9 @@ dependencies = [
 
 [[package]]
 name = "pathfinder_renderer"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d1fcb23360f0acecc76b1d6ac3af042d20ef41aa570c13826e470055434fb7b"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -872,21 +879,24 @@ dependencies = [
 
 [[package]]
 name = "pathfinder_resources"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7614a7cb5f3fad5c3fbd499ac4ce514892f98f812bc176bce837c1acaa6c04db"
 
 [[package]]
 name = "pathfinder_simd"
 version = "0.5.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b451513912d6b3440e443aa75a73ab22203afedc4a90df8526d008c0f86f7cb3"
 dependencies = [
  "rustc_version",
 ]
 
 [[package]]
 name = "pathfinder_ui"
-version = "0.1.0"
-source = "git+https://github.com/servo/pathfinder/#fda9b8b9e1b7d817bad21eb3c67bcfe1f33bc74e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a041d201743267167ec70624172ca789d18d92bf8181f3626be1efc7bb07ee89"
 dependencies = [
  "hashbrown",
  "pathfinder_color",
