@@ -1,5 +1,6 @@
 use flatgeobuf::*;
-use geozero_api::GeomProcessor;
+use geozero::error::Result;
+use geozero::GeomProcessor;
 use pathfinder_canvas::{Canvas, CanvasFontContext, CanvasRenderingContext2D, Path2D};
 use pathfinder_color::{rgbu, ColorF};
 use pathfinder_content::fill::FillRule;
@@ -23,7 +24,7 @@ mod ui;
 const DEFAULT_WINDOW_WIDTH: i32 = 1067;
 const DEFAULT_WINDOW_HEIGHT: i32 = 800;
 
-fn main() -> std::result::Result<(), std::io::Error> {
+fn main() -> Result<()> {
     let fname = std::env::args()
         .nth(1)
         .expect("FlatGeobuf file name expceted");
@@ -108,7 +109,7 @@ struct PathDrawer<'a> {
 }
 
 impl<'a> GeomProcessor for PathDrawer<'a> {
-    fn pointxy(&mut self, x: f64, y: f64, idx: usize) {
+    fn xy(&mut self, x: f64, y: f64, idx: usize) -> Result<()> {
         // x,y are in degrees, y must be inverted
         let x = (x as f32 - self.xmin) / self.pixel_size.x();
         let y = (self.ymax - y as f32) / self.pixel_size.y();
@@ -117,13 +118,16 @@ impl<'a> GeomProcessor for PathDrawer<'a> {
         } else {
             self.path.line_to(vec2f(x, y));
         }
+        Ok(())
     }
-    fn ring_begin(&mut self, _size: usize, _idx: usize) {
+    fn linestring_begin(&mut self, _tagged: bool, _size: usize, _idx: usize) -> Result<()> {
         self.path = Path2D::new();
+        Ok(())
     }
-    fn ring_end(&mut self, _idx: usize) {
+    fn linestring_end(&mut self, _tagged: bool, _idx: usize) -> Result<()> {
         self.path.close_path();
         self.canvas.fill_path(self.path.clone(), FillRule::Winding);
+        Ok(())
     }
 }
 
@@ -145,7 +149,7 @@ impl FgbRenderer {
         }
     }
 
-    fn render(&mut self) -> std::result::Result<(), std::io::Error> {
+    fn render(&mut self) -> Result<()> {
         let font_context = CanvasFontContext::from_system_source();
         let stats_ui_presenter = ui::StatsUIPresenter::new(
             &self.renderer.device,
@@ -191,9 +195,9 @@ impl FgbRenderer {
         stats.fbg_index_read_time = start.elapsed();
         stats.feature_count = freader.filter_count().unwrap();
         let start = Instant::now();
-        while let Ok(feature) = freader.next(&mut file) {
+        while let Some(feature) = freader.next(&mut file)? {
             let geometry = feature.geometry().unwrap();
-            geometry.process(&mut drawer, header.geometry_type());
+            geometry.process(&mut drawer, header.geometry_type())?;
         }
         stats.fbg_data_read_time = start.elapsed();
 
