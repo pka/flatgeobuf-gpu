@@ -221,7 +221,8 @@ dependencies = [
 [[package]]
 name = "flatgeobuf"
 version = "0.3.2"
-source = "git+https://github.com/pka/flatgeobuf/?branch=geozero#5e7e79b6c5332c3c92d1d6d7091349e74403150c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "354431fa4b29aa347d5301943a5572fb308a78b25570d7ac22443aceb0fdf233"
 dependencies = [
  "async-trait",
  "byteorder",
@@ -328,9 +329,9 @@ dependencies = [
 
 [[package]]
 name = "geozero"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "070b1965f82f4844c860a29bfbbcc60fb2a762012f47a1e40a556a0f912e9938"
+checksum = "e9422685e649a3c6c26c954d6cd486d53a40a91d254bcd3ea59407268dba72cd"
 dependencies = [
  "async-trait",
  "thiserror",

@@ -165,8 +165,8 @@ impl FgbRenderer {
         let mut stats = ui::Stats::default();
         let start = Instant::now();
         let mut file = BufReader::new(File::open(self.fname.clone())?);
-        let hreader = HeaderReader::read(&mut file)?;
-        let header = hreader.header();
+        let mut fgb = FgbReader::open(&mut file)?;
+        let geometry_type = fgb.header().geometry_type();
 
         let wsize = vec2f(self.window_size.x() as f32, self.window_size.y() as f32);
         // let bbox = (-180.0, -90.0, 180.0, 90.0);
@@ -184,20 +184,13 @@ impl FgbRenderer {
             canvas: &mut canvas,
             path: Path2D::new(),
         };
-        let mut freader = FeatureReader::select_bbox(
-            &mut file,
-            &header,
-            bbox.0 as f64,
-            bbox.1 as f64,
-            bbox.2 as f64,
-            bbox.3 as f64,
-        )?;
+        fgb.select_bbox(bbox.0 as f64, bbox.1 as f64, bbox.2 as f64, bbox.3 as f64)?;
         stats.fbg_index_read_time = start.elapsed();
-        stats.feature_count = freader.filter_count().unwrap();
+        stats.feature_count = fgb.features_count();
         let start = Instant::now();
-        while let Some(feature) = freader.next(&mut file)? {
+        while let Some(feature) = fgb.next()? {
             let geometry = feature.geometry().unwrap();
-            geometry.process(&mut drawer, header.geometry_type())?;
+            geometry.process(&mut drawer, geometry_type)?;
         }
         stats.fbg_data_read_time = start.elapsed();
 
