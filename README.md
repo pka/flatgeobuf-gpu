@@ -6,4 +6,4 @@ Experimental GPU rendering of [FlatGeobuf](https://bjornharrtell.github.io/flatg
 
 * `cargo build --release`
 
-* `./target/release/flatgeobuf-gpu osm-buildings-ch.fgb`
+* `./target/release/flatgeobuf-gpu osm-buildings-zurich.fgb`
