@@ -1,6 +1,6 @@
 # FlatGeobuf GPU
 
-Experimental GPU rendering of [FlatGeobuf](https://bjornharrtell.github.io/flatgeobuf/) for Rust.
+Experimental GPU rendering of [FlatGeobuf](https://flatgeobuf.org/) for Rust.
 
 ![screenshot](flatgeobuf-gpu.jpg)
 

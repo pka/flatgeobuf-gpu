@@ -17,6 +17,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::video::GLProfile;
 use std::fs::File;
 use std::io::BufReader;
+use std::mem;
 use std::time::Instant;
 
 mod ui;
@@ -120,14 +121,12 @@ impl<'a> GeomProcessor for PathDrawer<'a> {
         }
         Ok(())
     }
-    fn linestring_begin(&mut self, _tagged: bool, _size: usize, _idx: usize) -> Result<()> {
-        self.path = Path2D::new();
-        Ok(())
-    }
     fn linestring_end(&mut self, _tagged: bool, _idx: usize) -> Result<()> {
         self.path.close_path();
-        self.canvas
-            .fill_path(self.path.to_owned(), FillRule::Winding);
+        self.canvas.fill_path(
+            mem::replace(&mut self.path, Path2D::new()),
+            FillRule::Winding,
+        );
         Ok(())
     }
 }

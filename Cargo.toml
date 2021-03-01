@@ -5,8 +5,8 @@ authors = ["Pirmin Kalberer <pka@sourcepole.com>"]
 edition = "2018"
 
 [dependencies]
-flatgeobuf = "0.3.3"
-geozero = "0.5"
+flatgeobuf = "0.5.0"
+geozero = { version = "0.7.3", default-features = false }
 gl = "0.14"
 sdl2 = "0.33"
 sdl2-sys = "0.33"
